@@ -72,7 +72,7 @@ app.post('/api/register', async (req, res) => {
           subject: registeredUser._id
         }
         let token = jwt.sign(payload, 'secretkey')
-        res.status(200).send({token});
+        res.status(200).send({message : "UserRegistered"});
       }
       });
     });
@@ -81,6 +81,8 @@ app.post('/api/register', async (req, res) => {
 
 //api to authenticate User throught login
 app.post('/api/login', (req, res) => {
+
+  const localuser = req.body.email;
 
 User.findOne({ email: req.body.email }, function(err, user) {
     if (!user) {
@@ -95,57 +97,54 @@ User.findOne({ email: req.body.email }, function(err, user) {
         subject: user._id
       }
       let token = jwt.sign(payload, 'secretkey')
-      res.status(200).send({token})
+      res.status(200).send({token , localuser})
 
     });
   });
 
 });
 
+//to get all videos which are added by diff Users
+app.get('/api/dashboardvideos' , async (req,res) => {
 
-//api to post a video from User
-app.post('/api/upload', (req,res) => {
+  try {
+      
+    let url = await Url.find();
+    res.status(200).json(url);
 
-  let fileName = '';
-  let size = '';
-  let tempPath;
-  let extension;
-  let videoName;
-  let destPath = '';
-  let inputStream;
-  let outputStream;
-  let form = new multiparty.Form();
+  } catch (error) {
 
-  form.on('error', (err) => {
-    console.log('Error parsing form: ' + err.stack);
-  });
-
-  form.on('part', (part) => {
-    if(!part.filename){
-      return;
-    }
-    size = part.byteCount;
-    fileName = part.filename;
-  });
-  form.on('file', (name, file) => {
-    cloudinary.uploader.upload(file.path, function(response){
-      return res.json({ response: response });
-    }, { resource_type: "video" });
-  });
-  form.on('close', () => {
-    console.log('Uploaded!!');
-  });
-  form.parse(req);
-
+    res.status(404).json('Server Error');
+    
+  }
 })
 
 
+//to add like to video
+app.post('/api/likevideo' , async (req,res) => {
+  
+
+  try {
+    
+    let url = await Url.findOneAndUpdate({urlname : req.body.myurl}, { $inc: { like : 1 }});
+    res.status(200).json(url);
+
+
+  } catch (error) {
+    
+    res.status(404).json('Server Error');
+  }
+})
+
+
+
 //to get data from my DB and show in frontend
-app.get('/api/getvideos' , async (req,res) => {
+app.post('/api/getvideos' , async (req,res) => {
 
     try {
       
-      let url = await Url.find();
+      let url = await User.findOne({email : req.body.email}, {videos : 1});
+      
       res.status(200).json(url);
 
 
@@ -163,15 +162,25 @@ app.post('/api/postvideos', async (req,res) => {
 
   try {
   const bodyurl = req.body;
-  const myurl = bodyurl.name;
+  const myurl = bodyurl.url;
+  const bodytitle = bodyurl.title;
+
+
 
   let url = new Url({
-        urlname: myurl
+        urlname: myurl,
+        urltitle: bodytitle
   });
 
-  await url.save();
+  url.save();
 
-    res.json(url.urlname);
+  await User.findOneAndUpdate({email: req.body.email} , 
+    { $push: { 
+      videos: url
+    } 
+}
+    )
+    res.json(url);
   } catch (error) {
     res.status(404).json('Server Error');
   }
@@ -210,3 +219,9 @@ app.post('/api/postvideos', async (req,res) => {
 
 //opening port
 app.listen(process.env.PORT || 6563);
+
+
+
+
+
+

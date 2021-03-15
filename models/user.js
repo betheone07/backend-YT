@@ -16,8 +16,10 @@ const userSchema = new Schema({
     required: true
   },
   user_avatar: {
-    type: String,
-    default: 'http://s3.amazonaws.com/37assets/svn/765-default-avatar.png'
+    type: String
+  },
+  videos: {
+    type: Array
   }
 
 })
